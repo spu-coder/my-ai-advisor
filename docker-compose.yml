@@ -1,0 +1,92 @@
+# تعريف الشبكة الموحدة لضمان تواصل الحاويات
+networks:
+  app-network:
+    driver: bridge
+
+# تعريف المجلدات الدائمة لإدارة البيانات
+volumes:
+  ollama_data: {}
+  chroma_data: {}
+  neo4j_data: {}
+  app_data: {} # مجلد دائم لملفات قواعد بيانات SQLite
+
+# تعريف الخدمات (الحاويات)
+services:
+  # الخدمة 1: الواجهة الأمامية (Streamlit)
+  frontend:
+    build: ./frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - FASTAPI_BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  # الخدمة 2: الواجهة الخلفية (FastAPI - API Gateway)
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data  # مجلد المستندات
+      - app_data:/app/app_data # مجلد دائم لقواعد بيانات SQLite
+      - ./logs:/app/logs      # مجلد لملفات التسجيل (Logs)
+      - ./config:/app/config  # مجلد لملفات التكوين (Vibe Config)
+    environment:
+      - OLLAMA_BASE_URL=http://llm-service:11434
+      - CHROMA_HOST=vector-db
+      - CHROMA_PORT=8000
+      - NEO4J_URI=bolt://graph-db:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=StrongPassword123
+      - DB_PATH=/app/app_data/
+      - SECRET_KEY=YOUR_SUPER_SECRET_KEY # مفتاح JWT للأمان
+    depends_on:
+      - llm-service
+      - vector-db
+      - graph-db
+    networks:
+      - app-network
+
+  # الخدمة 3: خادم النموذج اللغوي (Ollama)
+  llm-service:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # إعدادات استخدام GPU (اختياري - قم بإلغاء التعليق إذا كان لديك GPU)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - app-network
+
+  # الخدمة 4: قاعدة بيانات المتجهات (ChromaDB)
+  vector-db:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8000"  # نعرضه على 8001 لتجنب التعارض مع FastAPI
+    volumes:
+      - chroma_data:/chroma
+    networks:
+      - app-network
+
+  # الخدمة 5: قاعدة بيانات الرسم البياني (Neo4j)
+  graph-db:
+    image: neo4j:latest
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    environment:
+      - NEO4J_AUTH=neo4j/StrongPassword123
+    networks:
+      - app-network
