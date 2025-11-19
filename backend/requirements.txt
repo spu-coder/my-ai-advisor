@@ -1,0 +1,27 @@
+fastapi
+uvicorn[standard]
+pydantic[email]
+httpx
+requests
+beautifulsoup4
+pdfplumber
+pandas
+chromadb
+langchain
+langchain-community
+langchain-core
+langchain-text-splitters
+langchain-chroma
+langchain-ollama
+neo4j
+python-dotenv
+sqlalchemy
+python-docx
+# مكتبات الأمان
+python-jose[cryptography]
+passlib[bcrypt]
+# لمعالجة الملفات المرفوعة
+python-multipart
+# لمعالجة الصور و OCR
+Pillow
+pytesseract
